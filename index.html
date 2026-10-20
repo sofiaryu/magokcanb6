@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CANB English Speech Contest 코칭 신청</title>
+<link rel="icon" href="logo.png">
+<style>
+:root{--p:#b91172;--pd:#8f0c59;--pl:#fbeaf3;--bg:#fff7fb;--tx:#231f20;--card:#fff;--bd:#efc9de;--mu:#8a7080}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;min-height:100vh}
+header{background:#fff;border-bottom:4px solid var(--p);padding:14px;text-align:center}header img{height:64px;max-width:70%}
+main{max-width:560px;margin:0 auto;padding:18px 14px 60px}main.wide{max-width:900px}h2{color:var(--p);margin:6px 0 14px;font-size:20px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:18px;margin-bottom:14px}
+input{width:100%;padding:13px;border:1.5px solid var(--bd);border-radius:10px;font-size:16px;background:var(--bg);color:var(--tx);margin:4px 0 12px}input[readonly]{opacity:.7}
+label{font-size:13px;color:var(--mu);font-weight:700}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:13px 16px;font-weight:700}
+.pri{background:var(--p);color:#fff;width:100%}.pri:hover{background:var(--pd)}.pri:disabled{opacity:.5}.ghost{background:none;color:var(--p);text-decoration:underline;width:100%;margin-top:6px}.sec{background:var(--pl);color:var(--p)}
+.slot{display:block;width:100%;text-align:left;background:#fff;border:2px solid var(--p);color:var(--tx);padding:16px;margin-bottom:12px}
+.slot b{display:block;font-size:19px;color:var(--p)}.slot span{font-size:14px;color:var(--mu)}
+.slot.full{border-color:var(--bd);background:var(--pl);cursor:not-allowed}.slot.full b{color:var(--mu)}.slot.full em{display:block;color:#d4183d;font-style:normal;font-weight:800;margin-top:4px}
+.slot.mine{background:var(--p)}.slot.mine *{color:#fff}.slot.lock{opacity:.55;border-color:var(--bd)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.top small{color:var(--mu)}
+.badge{display:inline-block;background:var(--p);color:#fff;border-radius:99px;padding:3px 11px;font-size:13px;margin-top:4px}
+.ov{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}.ov>div{background:#fff;border-radius:18px;padding:22px;max-width:420px;width:100%}
+.row{display:flex;gap:10px}.err{color:#d4183d;font-size:14px;min-height:18px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 6px;border-bottom:1px solid var(--bd);text-align:left}th{color:var(--p)}.tw{overflow-x:auto}
+.del{background:#d4183d;color:#fff;padding:6px 10px;font-size:13px}
+</style></head><body>
+<header><img src="logo.png" alt="CANB English"></header>
+<main id="app"></main>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getFirestore,doc,collection,onSnapshot,runTransaction,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+/* ===== 1) Firebase 설정 (콘솔 > 프로젝트 설정 > 내 앱 > 웹앱 에서 복사) ===== */
+const FIREBASE_CONFIG={apiKey:"  apiKey: "AIzaSyADpivTCUOvrRDOm1-0IcjJhv-pRpjJjJ8",
+  authDomain: "canb-coaching2.firebaseapp.com",
+  projectId: "canb-coaching2",
+  appId: "1:286138582711:web:d5c20c25a379ef92a02f32","};
+/* 관리자 계정 이메일 (Firebase Authentication에서 만든 계정, 비밀번호는 코드에 넣지 않음) */
+const ADMIN_EMAIL="admin@canb-english.com";
+/* ===== 2) 일정 / 정원 ===== */
+const SLOTS={d1027:{label:"10월 27일",time:"19:45 ~ 20:25"},d1029:{label:"10월 29일",time:"19:45 ~ 20:25"},d1103:{label:"11월 3일",time:"19:45 ~ 20:25"}};
+const TEACHERS={Sylvia:{slots:["d1027","d1103"],cap:11},Joseph:{slots:["d1027","d1103"],cap:11},Jan:{slots:["d1029","d1103"],cap:10},Christopher:{slots:["d1029","d1103"],cap:10}};
+/* ===== 3) 학생-담당선생님 명단 (학생-원어민_1.xlsx) ===== */
+const ROSTER=[["정다은","Joseph"],["김현근","Jan"],["권유은","Christopher"],["정루아","Joseph"],["송라온","Sylvia"],["오유원","Christopher"],["오원우","Joseph"],["이수빈","Jan"],["조수미","Sylvia"],["남다온","Joseph"],["최지윤","Christopher"],["송시은","Jan"],["Lucy(박채윤)","Christopher"],["김태윤","Jan"],["김태린B","Christopher"],["김시호","Sylvia"],["민지아","Joseph"],["전찬민","Christopher"],["김소윤","Sylvia"],["김소민","Joseph"],["박주호","Sylvia"],["박주윤","Christopher"],["허지우","Joseph"],["강나은","Joseph"],["김선우","Sylvia"],["김하진","Joseph"],["한선율","Jan"],["오서준","Christopher"],["박해민","Christopher"],["김민솔","Christopher"],["박채희","Christopher"],["이지유","Joseph"],["정윤우","Joseph"],["배규민","Sylvia"],["유태민","Jan"],["최현준","Joseph"],["김리원b","Sylvia"],["장윤아","Jan"],["조수아","Jan"],["신준서(JUN)","Jan"],["한소예","Christopher"],["홍예준","Jan"],["김도은","Christopher"],["이연재","Sylvia"],["김리아B","Jan"],["조윤진","Sylvia"],["조윤서","Joseph"],["심하윤","Sylvia"],["오유겸","Sylvia"],["이지오","Sylvia"],["이지한","Christopher"],["임서하","Jan"],["임재욱","Sylvia"],["김해준","Sylvia"],["김아린","Sylvia"],["한지유","Sylvia"],["김슬아B","Sylvia"],["유시안","Sylvia"],["권도윤","Sylvia"],["양하윤","Sylvia"],["김세연","Jan"],["김슬아A","Jan"],["이호은","Joseph"],["최수빈","Joseph"],["김지원B","Joseph"],["정보미","Christopher"],["이승호","Christopher"],["김서진","Christopher"],["김지원","Sylvia"],["김상윤","Sylvia"],["이지하","Joseph"],["이서하","Joseph"],["강나은B","Joseph"],["임채율","Joseph"],["오지호","Sylvia"],["송하정","Sylvia"],["김동준","Sylvia"],["소리엘","Sylvia"],["김민중","Sylvia"],["박준석","Sylvia"],["정희수","Jan"],["이지후","Jan"],["박서아","Jan"],["성아윤","Christopher"],["김진영","Joseph"],["이가은","Christopher"],["이지우","Christopher"],["선규리","Christopher"],["고다윤","Joseph"],["정도영","Christopher"],["최유나","Joseph"],["김단우","Christopher"]];
+const MAP=Object.fromEntries(ROSTER);
+
+const $=s=>document.querySelector(s),app=$("#app");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const lbl=s=>SLOTS[s].label+" "+SLOTS[s].time;
+const ok=!FIREBASE_CONFIG.apiKey.startsWith("YOUR");
+let db,auth,counts={},myBooking=null,unsubMy=null,me=null,view="login",loginErr="";
+let allB=[],allC={},isAdmin=false,unsubAdmin=[];
+if(ok){const a=initializeApp(FIREBASE_CONFIG);db=getFirestore(a);auth=getAuth(a);
+ onSnapshot(collection(db,"counts"),sn=>{counts={};sn.forEach(d=>counts[d.id]=d.data().n||0);render()},()=>{})}
+const cnt=(t,s)=>counts[t+"_"+s]||0;
+
+function render(){if(document.querySelector(".ov")&&view!=="login"&&view!=="student")return;({login,student,adminlogin,admin:adminView})[view]()}
+function login(){app.className="";
+ app.innerHTML=`<h2>Speech Contest 2차 그룹 코칭 신청</h2><div class="card"><label>학생 이름</label><input id="nm" placeholder="예) 김캔비" autocomplete="off"><div class="err">${loginErr}</div><button class="pri" id="go">로그인</button><button class="ghost" id="ad">관리자</button></div>${ok?"":'<div class="card err">Firebase 설정이 아직 입력되지 않았습니다.</div>'}`;
+ $("#go").onclick=doLogin;$("#nm").onkeydown=e=>e.key==="Enter"&&doLogin();$("#ad").onclick=()=>{view="adminlogin";render()}}
+function doLogin(){const n=$("#nm").value.trim().replace(/\s+/g,"");
+ if(!MAP[n]){loginErr="등록된 학생 이름이 아닙니다. 이름을 다시 확인해 주세요.";return login()}
+ loginErr="";me={name:n,teacher:MAP[n]};view="student";
+ if(unsubMy)unsubMy();
+ if(ok)unsubMy=onSnapshot(doc(db,"bookings",n),d=>{myBooking=d.exists()?d.data():null;render()},()=>{});
+ render()}
+function student(){app.className="";
+ const T=TEACHERS[me.teacher],m=myBooking;
+ app.innerHTML=`<div class="card top"><div><b style="font-size:19px">${esc(me.name)} 학생</b><br><small>담당: ${me.teacher} 선생님</small><br>${m?`<span class="badge">신청: ${lbl(m.slot)}</span>`:`<small>아직 신청 전입니다</small>`}</div><button class="sec" id="lo">로그아웃</button></div>
+ <h2>날짜 · 시간 선택</h2>${T.slots.map(s=>{const left=T.cap-cnt(me.teacher,s),mine=m&&m.slot===s,full=left<=0&&!mine;
+ return `<button class="slot ${full?"full":""} ${mine?"mine":""} ${m&&!mine?"lock":""}" data-s="${s}"><b>${SLOTS[s].label}</b><span>${SLOTS[s].time}</span>${full?"<em>마감</em>":`<span style="display:block;margin-top:4px">${mine?"✔ 신청 완료":"잔여 "+left+"/"+T.cap+"자리"}</span>`}</button>`}).join("")}`;
+ $("#lo").onclick=()=>{if(unsubMy)unsubMy();myBooking=null;me=null;view="login";render()};
+ app.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{if(m)return askCancel();if(b.classList.contains("full")||!ok)return;form(b.dataset.s)})}
+function modal(h){const o=document.createElement("div");o.className="ov";o.innerHTML="<div>"+h+"</div>";document.body.appendChild(o);o.close=()=>o.remove();return o}
+function form(s){const o=modal(`<h2>${lbl(s)}</h2><label>한글 이름</label><input value="${esc(me.name)}" readonly><label>영어 이름</label><input id="en" placeholder="예) Candy Kim" autocomplete="off"><label>부모님 H.P</label><input id="hp" inputmode="numeric" placeholder="010-0000-0000"><div class="err" id="fe"></div><div class="row"><button class="sec" id="x" style="flex:1">닫기</button><button class="pri" id="okb" style="flex:2">신청하기</button></div>`);
+ $("#hp").oninput=e=>{const d=e.target.value.replace(/\D/g,"").slice(0,11);e.target.value=d.length>7?d.replace(/(\d{3})(\d{3,4})(\d{4})/,"$1-$2-$3"):d.length>3?d.replace(/(\d{3})(\d+)/,"$1-$2"):d};
+ $("#x").onclick=o.close;
+ $("#okb").onclick=async()=>{const en=$("#en").value.trim(),hp=$("#hp").value.trim(),fe=$("#fe");
+  if(!/^[A-Za-z][A-Za-z .'-]*$/.test(en))return fe.textContent="영어 이름을 영문으로 입력해 주세요.";
+  if(!/^01\d-\d{3,4}-\d{4}$/.test(hp))return fe.textContent="부모님 휴대폰 번호를 정확히 입력해 주세요.";
+  $("#okb").disabled=true;
+  try{await apply(s,en,hp);o.close();alert("신청이 완료되었습니다.")}
+  catch(e){fe.textContent=e.message==="FULL"?"방금 마감되었습니다.":e.message==="DUP"?"이미 신청되어 있습니다.":"신청에 실패했습니다. 다시 시도해 주세요.";$("#okb").disabled=false}}}
+async function apply(s,en,hp){const t=me.teacher,cap=TEACHERS[t].cap,cr=doc(db,"counts",t+"_"+s),br=doc(db,"bookings",me.name),pr=doc(db,"contacts",me.name);
+ await runTransaction(db,async tx=>{const b=await tx.get(br);if(b.exists())throw new Error("DUP");const c=await tx.get(cr),n=c.exists()?c.data().n:0;if(n>=cap)throw new Error("FULL");
+  tx.set(cr,{n:n+1,teacher:t,slot:s});tx.set(br,{name:me.name,teacher:t,slot:s,ts:Date.now()});tx.set(pr,{name:me.name,teacher:t,slot:s,en,hp})})}
+async function cancel(name){await runTransaction(db,async tx=>{const br=doc(db,"bookings",name),b=await tx.get(br);if(!b.exists())return;const{teacher:t,slot:s}=b.data(),cr=doc(db,"counts",t+"_"+s),c=await tx.get(cr);
+  tx.set(cr,{n:Math.max((c.exists()?c.data().n:1)-1,0),teacher:t,slot:s});tx.delete(br);tx.delete(doc(db,"contacts",name))})}
+function askCancel(){const m=myBooking;const o=modal(`<p style="font-size:17px;line-height:1.6"><b>${esc(me.name)}</b> 학생 <b>${lbl(m.slot)}</b> 신청이 되어있습니다.<br>취소하시고 재신청 하시겠습니까?</p><div class="row"><button class="sec" id="no" style="flex:1">아니오</button><button class="pri" id="yes" style="flex:1">예</button></div>`);
+ $("#no").onclick=o.close;$("#yes").onclick=async()=>{try{await cancel(me.name)}catch(e){alert("취소에 실패했습니다.")}o.close()}}
+function adminlogin(){app.className="";app.innerHTML=`<h2>관리자 로그인</h2><div class="card"><label>비밀번호</label><input type="password" id="pw"><div class="err" id="er"></div><button class="pri" id="go">로그인</button><button class="ghost" id="bk">돌아가기</button></div>`;
+ const go=async()=>{if(!ok)return $("#er").textContent="Firebase 설정이 필요합니다.";try{await signInWithEmailAndPassword(auth,ADMIN_EMAIL,$("#pw").value);startAdmin()}catch(e){$("#er").textContent="비밀번호가 올바르지 않습니다."}};
+ $("#go").onclick=go;$("#pw").onkeydown=e=>e.key==="Enter"&&go();$("#bk").onclick=()=>{view="login";render()}}
+function startAdmin(){view="admin";unsubAdmin.forEach(f=>f());
+ unsubAdmin=[onSnapshot(collection(db,"bookings"),sn=>{allB=sn.docs.map(d=>d.data());render()}),onSnapshot(collection(db,"contacts"),sn=>{allC={};sn.forEach(d=>allC[d.id]=d.data());render()})];render()}
+function adminView(){app.className="wide";
+ const g=Object.keys(SLOTS).map(s=>{const rows=allB.filter(b=>b.slot===s).sort((a,b)=>a.teacher.localeCompare(b.teacher)||a.ts-b.ts);
+  return `<div class="card"><h2>${lbl(s)} <small style="color:var(--mu)">(${rows.length}명)</small></h2><p style="font-size:13px;color:var(--mu)">${Object.entries(TEACHERS).filter(([t,v])=>v.slots.includes(s)).map(([t,v])=>`${t} ${cnt(t,s)}/${v.cap}`).join(" · ")}</p>
+  ${rows.length?`<div class="tw"><table><tr><th>선생님</th><th>이름</th><th>영어이름</th><th>부모님 H.P</th><th></th></tr>${rows.map(b=>{const c=allC[b.name]||{};return `<tr><td>${esc(b.teacher)}</td><td>${esc(b.name)}</td><td>${esc(c.en||"")}</td><td>${esc(c.hp||"")}</td><td><button class="del" data-n="${esc(b.name)}">삭제</button></td></tr>`}).join("")}</table></div>`:"<small>신청 내역이 없습니다.</small>"}</div>`}).join("");
+ app.innerHTML=`<div class="top"><h2>관리자 페이지</h2><button class="sec" id="lo">로그아웃</button></div>${g}`;
+ $("#lo").onclick=async()=>{unsubAdmin.forEach(f=>f());unsubAdmin=[];await signOut(auth);view="login";render()};
+ app.querySelectorAll(".del").forEach(b=>b.onclick=async()=>{const n=b.dataset.n;if(confirm(`${n} 학생의 신청을 삭제할까요?`))try{await cancel(n)}catch(e){alert("삭제 실패")}})}
+render();
+</script></body></html>

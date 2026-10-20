@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() { return request.auth != null && request.auth.token.email == 'admin@canb-english.com'; }
+    function capOf(t) { return t in ['Sylvia','Joseph'] ? 11 : 10; }
+    function validSlot(t, s) {
+      return (t in ['Sylvia','Joseph'] && s in ['d1027','d1103'])
+          || (t in ['Jan','Christopher'] && s in ['d1029','d1103']);
+    }
+
+    // 잔여 인원 카운터 (누구나 읽기, 변경은 +1/-1 만 허용)
+    match /counts/{id} {
+      allow read: if true;
+      allow write: if isAdmin() || (
+        request.resource.data.keys().hasOnly(['n','teacher','slot'])
+        && validSlot(request.resource.data.teacher, request.resource.data.slot)
+        && id == request.resource.data.teacher + '_' + request.resource.data.slot
+        && request.resource.data.n >= 0
+        && request.resource.data.n <= capOf(request.resource.data.teacher)
+        && (resource == null ? request.resource.data.n == 1
+            : (request.resource.data.n == resource.data.n + 1 || request.resource.data.n == resource.data.n - 1)));
+    }
+
+    // 신청 내역: 내 문서만 get, 목록은 관리자만
+    match /bookings/{name} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['name','teacher','slot','ts'])
+                    && request.resource.data.name == name
+                    && validSlot(request.resource.data.teacher, request.resource.data.slot);
+      allow delete: if true;
+      allow update: if false;
+    }
+
+    // 개인정보(영어이름, 부모님 H.P): 읽기는 관리자만
+    match /contacts/{name} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['name','teacher','slot','en','hp'])
+                    && request.resource.data.name == name
+                    && request.resource.data.en is string && request.resource.data.en.size() < 40
+                    && request.resource.data.hp.matches('^01[0-9]-[0-9]{3,4}-[0-9]{4}$');
+      allow delete: if true;
+      allow update: if false;
+    }
+  }
+}
