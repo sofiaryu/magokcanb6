@@ -53,7 +53,7 @@ function refresh(){if(view==="student"||view==="admin")render()}
 function render(){if(document.querySelector(".ov")&&view!=="login"&&view!=="student")return;({login,student,adminlogin,admin:adminView})[view]()}
 function login(){app.className="";
  app.innerHTML=`<h2>Speech Contest 2차 그룹 코칭 신청</h2><div class="card"><label>학생 이름</label><input id="nm" placeholder="예) 김캔비" autocomplete="off"><div class="err">${loginErr}</div><button class="pri" id="go">로그인</button><button class="ghost" id="ad">관리자</button></div>${ok?"":'<div class="card err">Firebase 설정이 아직 입력되지 않았습니다.</div>'}`;
- $("#go").onclick=doLogin;$("#nm").onkeydown=e=>e.key==="Enter"&&doLogin();$("#ad").onclick=()=>{view="adminlogin";render()}}
+ $("#go").onclick=doLogin;$("#nm").onkeydown=e=>{if(e.key==="Enter")doLogin()};$("#ad").onclick=()=>{view="adminlogin";render()}}
 function doLogin(){const n=$("#nm").value.trim().replace(/\s+/g,"");
  if(!MAP[n]){loginErr="등록된 학생 이름이 아닙니다. 이름을 다시 확인해 주세요.";return login()}
  loginErr="";me={name:n,teacher:MAP[n]};view="student";
@@ -86,7 +86,7 @@ function askCancel(){const m=myBooking;const o=modal(`<p style="font-size:17px;l
  $("#no").onclick=o.close;$("#yes").onclick=async()=>{try{await cancel(me.name)}catch(e){alert("취소에 실패했습니다.")}o.close()}}
 function adminlogin(){app.className="";app.innerHTML=`<h2>관리자 로그인</h2><div class="card"><label>비밀번호</label><input type="password" id="pw"><div class="err" id="er"></div><button class="pri" id="go">로그인</button><button class="ghost" id="bk">돌아가기</button></div>`;
  const go=async()=>{if(!ok)return $("#er").textContent="Firebase 설정이 필요합니다.";try{await signInWithEmailAndPassword(auth,ADMIN_EMAIL,$("#pw").value);startAdmin()}catch(e){console.error(e);const c=e.code||"";$("#er").textContent=(c==="auth/invalid-credential"||c==="auth/wrong-password"||c==="auth/user-not-found"||c==="auth/invalid-login-credentials")?"이메일 또는 비밀번호가 올바르지 않습니다. ("+c+")":"로그인 오류: "+(c||e.message)}};
- $("#go").onclick=go;$("#pw").onkeydown=e=>e.key==="Enter"&&go();$("#bk").onclick=()=>{view="login";render()}}
+ $("#go").onclick=go;$("#pw").onkeydown=e=>{if(e.key==="Enter")go()};$("#bk").onclick=()=>{view="login";render()}}
 function startAdmin(){view="admin";unsubAdmin.forEach(f=>f());
  unsubAdmin=[onSnapshot(collection(db,"bookings"),sn=>{allB=sn.docs.map(d=>d.data());refresh()}),onSnapshot(collection(db,"contacts"),sn=>{allC={};sn.forEach(d=>allC[d.id]=d.data());refresh()})];render()}
 function adminView(){app.className="wide";
